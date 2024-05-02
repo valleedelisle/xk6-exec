@@ -50,7 +50,7 @@ func (exec *EXEC) Exports() modules.Exports {
 func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 	var out strings.Builder
 	cmd := exec.Command(name, args...)
-        fmt.Printf("Command: %s %s" name, strings.Join(args, " "))
+        fmt.Printf("Command: %s %s", name, strings.Join(args, " "))
 	if option.Dir != "" {
 	  cmd.Dir = option.Dir
 	}
