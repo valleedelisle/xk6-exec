@@ -53,10 +53,10 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 		cmd.Dir = option.Dir
 	}
 	out, err := cmd.Output()
-	if err != nil {
-                log.Fatal(err.Error() + " on command: " + name + " " + strings.Join(args, " "))
-                log.Fatal(fmt.Printf("Error: %s\n", err))
-	}
         log.Fatal(fmt.Printf("Output: %s\n", string(out)))
+	if err != nil {
+                log.Fatal(fmt.Printf("Error: %s\n", err))
+                log.Fatal(err.Error() + " on command: " + name + " " + strings.Join(args, " "))
+	}
 	return string(out)
 }
