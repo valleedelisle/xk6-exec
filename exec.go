@@ -48,9 +48,10 @@ func (exec *EXEC) Exports() modules.Exports {
 	return modules.Exports{Default: exec}
 }
 
+var out strings.Builder
+
 // Command is a wrapper for Go exec.Command
 func (*EXEC) Command(name string, args []string, option CommandOptions) string {
-	var out strings.Builder
 	command := exec.Command(name, args...)
 	command.Env = os.Environ()
 	if option.Dir != "" {
@@ -74,13 +75,8 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 		fmt.Printf("Failed starting command: %s", err)
 		return ""
 	}
-	sout := handleReader(stdoutReader)
-	out.WriteString("STDOUT:")
-	out.WriteString(sout)
-	serr := handleReader(stderrReader)
-	out.WriteString("STDERR:")
-	out.WriteString(serr)
-	fmt.Printf("FullOutput: %s", out.String())
+	go handleReader(stdoutReader)
+	go handleReader(stderrReader)
 	if err := command.Wait(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
@@ -93,15 +89,14 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 	}
 	return out.String()
 }
-func handleReader(reader *bufio.Reader) string {
-	var out strings.Builder
+func handleReader(reader *bufio.Reader) {
 	for {
 		str, err := reader.ReadString('\n')
 		if len(str) == 0 && err != nil {
 			if err == io.EOF {
 				break
 			}
-			return out.String()
+			return
 		}
 		fmt.Print(str)
 		out.WriteString(str)
@@ -109,8 +104,8 @@ func handleReader(reader *bufio.Reader) string {
 			if err == io.EOF {
 				break
 			}
-			return out.String()
+			return
 		}
 	}
-	return out.String()
+	return
 }
