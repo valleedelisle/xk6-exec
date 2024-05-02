@@ -48,15 +48,27 @@ func (exec *EXEC) Exports() modules.Exports {
 
 // Command is a wrapper for Go exec.Command
 func (*EXEC) Command(name string, args []string, option CommandOptions) string {
+	var out strings.Builder
 	cmd := exec.Command(name, args...)
+        fmt.Printf("Command: %s %s" name, strings.Join(args, " "))
 	if option.Dir != "" {
-		cmd.Dir = option.Dir
+	  cmd.Dir = option.Dir
 	}
-	out, err := cmd.Output()
-        fmt.Printf("Output: %s\n", string(out))
-        fmt.Printf("Error: %s\n", err)
-	if err != nil {
-                log.Fatal(err.Error() + " on command: " + name + " " + strings.Join(args, " "))
-	}
+        pipe, _ := cmd.StdoutPipe()
+        if err := cmd.Start(); err != nil {
+          fmt.Printf("Start Error: %s", err.Error())
+        }
+        go func(p io.ReadCloser) {
+            reader := bufio.NewReader(pipe)
+            line, err := reader.ReadString('\n')
+            for err == nil {
+		out.WriteString(line)
+                fmt.Println(line)
+                line, err = reader.ReadString('\n')
+            }
+        }(pipe)
+        if err := cmd.Wait(); err != nil {
+          fmt.Printf("Wait Error: %s", err.Error())
+        }
 	return string(out)
 }
