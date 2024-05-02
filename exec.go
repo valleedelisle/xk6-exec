@@ -2,13 +2,14 @@
 package exec
 
 import (
-	"strings"
-	"os"
-	"fmt"
-	"os/exec"
 	"bufio"
-	"io"
+	"fmt"
 	"go.k6.io/k6/js/modules"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
 )
 
 func init() {
@@ -49,11 +50,11 @@ func (exec *EXEC) Exports() modules.Exports {
 
 // Command is a wrapper for Go exec.Command
 func (*EXEC) Command(name string, args []string, option CommandOptions) string {
-        var out strings.Builder
+	var out strings.Builder
 	command := exec.Command(name, args...)
 	command.Env = os.Environ()
 	if option.Dir != "" {
-	  command.Dir = option.Dir
+		command.Dir = option.Dir
 	}
 	stdout, err := command.StdoutPipe()
 	if err != nil {
@@ -75,24 +76,25 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 	}
 	sout := handleReader(stdoutReader)
 	out.WriteString("STDOUT:")
-        out.WriteString(sout)
+	out.WriteString(sout)
 	serr := handleReader(stderrReader)
 	out.WriteString("STDERR:")
-        out.WriteString(serr)
+	out.WriteString(serr)
+	fmt.Printf("FullOutput: %s", out.String())
 	if err := command.Wait(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				fmt.Printf("Exit Status: %s", status.ExitStatus())
+				fmt.Printf("Exit Status: %d", status.ExitStatus())
 				fmt.Printf("Err: %s", err)
-				return out
+				return out.String()
 			}
 		}
-		return out
+		return out.String()
 	}
-	return out
+	return out.String()
 }
-func handleReader(reader *bufio.Reader) error {
-        var out strings.Builder
+func handleReader(reader *bufio.Reader) string {
+	var out strings.Builder
 	for {
 		str, err := reader.ReadString('\n')
 		if len(str) == 0 && err != nil {
