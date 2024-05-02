@@ -3,10 +3,8 @@ package exec
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
-        "bytes"
 	"bufio"
 	"io"
 	"go.k6.io/k6/js/modules"
