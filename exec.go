@@ -2,9 +2,10 @@
 package exec
 
 import (
+	"strings"
+	"os"
 	"fmt"
 	"os/exec"
-	"strings"
 	"bufio"
 	"io"
 	"go.k6.io/k6/js/modules"
@@ -48,6 +49,7 @@ func (exec *EXEC) Exports() modules.Exports {
 
 // Command is a wrapper for Go exec.Command
 func (*EXEC) Command(name string, args []string, option CommandOptions) string {
+        var out strings.Builder
 	command := exec.Command(name, args...)
 	command.Env = os.Environ()
 	if option.Dir != "" {
@@ -56,50 +58,57 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		fmt.Printf("Failed creating command stdoutpipe: %s", err)
-		return err
+		return ""
 	}
 	defer stdout.Close()
 	stdoutReader := bufio.NewReader(stdout)
 	stderr, err := command.StderrPipe()
 	if err != nil {
 		fmt.Printf("Failed creating command stderrpipe: %s", err)
-		return err
+		return ""
 	}
 	defer stderr.Close()
 	stderrReader := bufio.NewReader(stderr)
 	if err := command.Start(); err != nil {
 		fmt.Printf("Failed starting command: %s", err)
-		return err
+		return ""
 	}
-	go handleReader(stdoutReader)
-	go handleReader(stderrReader)
+	sout = go handleReader(stdoutReader)
+	out.WriteString("STDOUT:")
+        out.WriteString(sout)
+	serr = go handleReader(stderrReader)
+	out.WriteString("STDERR:")
+        out.WriteString(serr)
 	if err := command.Wait(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				fmt.Printf("Exit Status: %s", status.ExitStatus())
 				fmt.Printf("Err: %s", err)
-				return err
+				return out
 			}
 		}
-		return err
+		return out
 	}
+	return out
 }
 func handleReader(reader *bufio.Reader) error {
+        var out strings.Builder
 	for {
 		str, err := reader.ReadString('\n')
 		if len(str) == 0 && err != nil {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return out.String()
 		}
 		fmt.Print(str)
+		out.WriteString(str)
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return out.String()
 		}
 	}
-	return nil
+	return out.String()
 }
