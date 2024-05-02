@@ -73,10 +73,10 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 		fmt.Printf("Failed starting command: %s", err)
 		return ""
 	}
-	sout := go handleReader(stdoutReader)
+	sout := handleReader(stdoutReader)
 	out.WriteString("STDOUT:")
         out.WriteString(sout)
-	serr := go handleReader(stderrReader)
+	serr := handleReader(stderrReader)
 	out.WriteString("STDERR:")
         out.WriteString(serr)
 	if err := command.Wait(); err != nil {
