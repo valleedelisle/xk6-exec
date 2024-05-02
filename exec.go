@@ -2,6 +2,7 @@
 package exec
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -54,7 +55,8 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatal(err.Error() + " on command: " + name + " " + strings.Join(args, " "))
-		log.Fatal("Out: " + out + " Err: " + err)
+		fmt.Printf("Output: %s\n", out)
+		fmt.Printf("Error: %s\n", err)
 	}
 	return string(out)
 }
