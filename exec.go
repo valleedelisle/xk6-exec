@@ -48,27 +48,58 @@ func (exec *EXEC) Exports() modules.Exports {
 
 // Command is a wrapper for Go exec.Command
 func (*EXEC) Command(name string, args []string, option CommandOptions) string {
-	var out strings.Builder
-	cmd := exec.Command(name, args...)
-        fmt.Printf("Command: %s %s", name, strings.Join(args, " "))
+	command := exec.Command(name, args...)
+	command.Env = os.Environ()
 	if option.Dir != "" {
-	  cmd.Dir = option.Dir
+	  command.Dir = option.Dir
 	}
-        pipe, _ := cmd.StdoutPipe()
-        if err := cmd.Start(); err != nil {
-          fmt.Printf("Start Error: %s", err.Error())
-        }
-        go func(p io.ReadCloser) {
-            reader := bufio.NewReader(pipe)
-            line, err := reader.ReadString('\n')
-            for err == nil {
-		out.WriteString(line)
-                fmt.Println(line)
-                line, err = reader.ReadString('\n')
-            }
-        }(pipe)
-        if err := cmd.Wait(); err != nil {
-          fmt.Printf("Wait Error: %s", err.Error())
-        }
-	return out.String()
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		fmt.Printf("Failed creating command stdoutpipe: %s", err)
+		return err
+	}
+	defer stdout.Close()
+	stdoutReader := bufio.NewReader(stdout)
+	stderr, err := command.StderrPipe()
+	if err != nil {
+		fmt.Printf("Failed creating command stderrpipe: %s", err)
+		return err
+	}
+	defer stderr.Close()
+	stderrReader := bufio.NewReader(stderr)
+	if err := command.Start(); err != nil {
+		fmt.Printf("Failed starting command: %s", err)
+		return err
+	}
+	go handleReader(stdoutReader)
+	go handleReader(stderrReader)
+	if err := command.Wait(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				fmt.Printf("Exit Status: %s", status.ExitStatus())
+				fmt.Printf("Err: %s", err)
+				return err
+			}
+		}
+		return err
+	}
+}
+func handleReader(reader *bufio.Reader) error {
+	for {
+		str, err := reader.ReadString('\n')
+		if len(str) == 0 && err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		fmt.Print(str)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	return nil
 }
