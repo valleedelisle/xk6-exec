@@ -72,5 +72,5 @@ func (*EXEC) Command(name string, args []string, option CommandOptions) string {
         if err := cmd.Wait(); err != nil {
           fmt.Printf("Wait Error: %s", err.Error())
         }
-	return string(out)
+	return out.String()
 }
